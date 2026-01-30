@@ -1,30 +1,40 @@
-"""
-LLM-based intent classification.
-Classifies user queries as DATA_ACCESS or REASONING.
-"""
-from openai import OpenAI
+"""Intent classification using LLM."""
+import json
 from .config import Intent
 
 
-def classify_intent_llm(query: str, client: OpenAI) -> str:
-    """
-    Classify user query intent using LLM.
+INTENT_PROMPT = """Classify the user's fitness query into one of two intents:
+
+DATA_ACCESS - User wants to see/view/list their workout data
+Examples: "show my bench press history", "what did I do last week", "list chest exercises"
+
+REASONING - User wants advice, analysis, or coaching
+Examples: "how can I improve my squat", "am I overtraining", "why am I stuck"
+
+Respond with ONLY the intent label: DATA_ACCESS or REASONING"""
+
+
+def classify_intent(query: str, client=None) -> str:
+    """Classify query as DATA_ACCESS or REASONING."""
+    if client is None:
+        return _classify_mock(query)
     
-    Args:
-        query: User's natural language query
-        client: OpenAI client instance
-        
-    Returns:
-        Intent.DATA_ACCESS or Intent.REASONING
-        
-    Examples:
-        "Show me my bench press history" -> DATA_ACCESS
-        "How can I improve my squat?" -> REASONING
-        "List all chest exercises I did" -> DATA_ACCESS  
-        "Why am I not progressing on deadlift?" -> REASONING
-    """
-    # TODO: Implement
-    # 1. Create system prompt explaining the two intents
-    # 2. Send query to LLM (gpt-4o-mini for cost efficiency)
-    # 3. Parse response to return intent label
-    pass
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": INTENT_PROMPT},
+            {"role": "user", "content": query}
+        ],
+        max_tokens=20
+    )
+    
+    result = response.choices[0].message.content.strip().upper()
+    return Intent.DATA_ACCESS if "DATA" in result else Intent.REASONING
+
+
+def _classify_mock(query: str) -> str:
+    """Fallback keyword-based classification."""
+    data_keywords = ["show", "list", "see", "display", "what did", "history"]
+    if any(kw in query.lower() for kw in data_keywords):
+        return Intent.DATA_ACCESS
+    return Intent.REASONING

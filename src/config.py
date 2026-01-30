@@ -1,9 +1,5 @@
-"""
-Configuration and constants for the fitness assistant.
-Contains exercise ontology mapping.
-"""
+"""Configuration and constants."""
 
-# Exercise Ontology - Maps exercise titles to canonical IDs and muscle groups
 EXERCISE_MUSCLE_MAP = {
     "Bench Press (Barbell)": {
         "exercise_id": "bench_press",
@@ -77,14 +73,8 @@ EXERCISE_MUSCLE_MAP = {
     }
 }
 
-# Intent labels
 class Intent:
     DATA_ACCESS = "DATA_ACCESS"
     REASONING = "REASONING"
 
-# All unique muscles (derived from map)
-ALL_MUSCLES = list(set(
-    muscle 
-    for info in EXERCISE_MUSCLE_MAP.values() 
-    for muscle in info["targeted_muscles"]
-))
+DATE_FORMAT = "%d %b %Y, %H:%M"

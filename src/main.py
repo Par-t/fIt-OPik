@@ -1,67 +1,63 @@
-"""
-Main entry point for the Fitness Data Assistant.
-Demo script for hackathon presentation.
-"""
+"""Main entry point for the Fitness Data Assistant."""
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
 
-from .data_loader import load_and_normalize_csv
+from .data_loader import load_and_normalize_csv, get_unsupported_exercises
+from .data_analyzer import generate_user_profile
 from .router import handle_user_query
 
 
 def main():
-    """
-    Demo flow:
-    1. Load environment variables
-    2. Initialize OpenAI client
-    3. Load and normalize CSV data
-    4. Interactive query loop
-    """
-    # Load API key from .env
+    # Load environment
     load_dotenv()
     api_key = os.getenv("OPENAI_API_KEY")
     
-    if not api_key:
-        print("Error: OPENAI_API_KEY not found in .env file")
-        return
+    # Initialize OpenAI client if key exists
+    client = None
+    if api_key:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        print("✓ OpenAI connected")
+    else:
+        print("⚠ No API key - running in mock mode")
     
-    # Initialize OpenAI client
-    client = OpenAI(api_key=api_key)
+    csv_path = "data/workout_data.csv"
     
-    # Load workout data
-    csv_path = "data/workouts.csv"  # Update with actual path
-    print(f"Loading data from {csv_path}...")
+    # Load and normalize data
+    print("Loading data...")
+    df = load_and_normalize_csv(csv_path)
+    print(f"✓ Loaded {len(df)} sets from supported exercises")
     
-    try:
-        df = load_and_normalize_csv(csv_path)
-        print(f"Loaded {len(df)} workout records")
-    except Exception as e:
-        print(f"Error loading CSV: {e}")
-        return
+    # Generate profile
+    print("Generating user profile...")
+    profile = generate_user_profile(df)
+    print(f"✓ Profile: {len(profile['exercises'])} exercises, {len(profile['muscles'])} muscles")
+    print(f"  {profile['global']['summary']}")
+    
+    # Show unsupported
+    unsupported = get_unsupported_exercises(csv_path)
+    if unsupported:
+        print(f"\n⚠ {len(unsupported)} unmapped exercises (add to config.py later)")
     
     # Interactive loop
-    print("\n" + "="*50)
-    print("Fitness Data Assistant")
-    print("="*50)
-    print("Ask questions about your workout data!")
+    print("\n" + "="*60)
+    print("Fitness Data Assistant" + (" (LLM Mode)" if client else " (Mock Mode)"))
+    print("="*60)
+    print("Examples:")
+    print("  • show bench press history")
+    print("  • how can I improve my squat?")
+    print("  • am I training chest enough?")
     print("Type 'quit' to exit\n")
     
     while True:
         query = input("You: ").strip()
-        
         if query.lower() in ["quit", "exit", "q"]:
-            print("Goodbye!")
             break
-            
         if not query:
             continue
-            
-        try:
-            response = handle_user_query(query, df, client)
-            print(f"\nAssistant: {response}\n")
-        except Exception as e:
-            print(f"Error: {e}\n")
+        
+        response = handle_user_query(query, df, profile, client)
+        print(f"\n{response}\n")
 
 
 if __name__ == "__main__":
